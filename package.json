@@ -1,0 +1,43 @@
+{
+  "name": "flow-srt",
+  "version": "1.0.0",
+  "description": "Ferramenta moderna e elegante para sincronização de legendas .srt",
+  "main": "main.js",
+  "author": "Anderson Cardoso Dias",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build:portable": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.anderson.flowsrt",
+    "productName": "FlowSRT",
+    "win": {
+      "target": "portable",
+      "icon": "FlowSRT_logo.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "FlowSRT_logo.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "FlowSRT_logo.png",
+      "category": "Video"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SEU_USUARIO_GITHUB",
+        "repo": "flow-srt"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.1"
+  }
+}

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowSRT - Subtitle Time Shift</title>
+    <style>
+        /* Arquitetura de Variáveis CSS - Estilo Minimalista de Alta Precisão */
+        :root {
+            /* Cores base extraídas do seu Logo Oficial */
+            --logo-blue: #3498db;
+            --logo-cyan: #00ffff;
+            --logo-deep: #192a56;
+
+            /* Tema Claro (Padrão) - Sólido e Limpo */
+            --bg-body: #f4f4f9;
+            --bg-container: transparent;
+            --text-main: #2c3e50;
+            --text-label: #34495e;
+            --text-muted: #7f8c8d;
+            --border-color: #dcdde1;
+            --input-bg: #ffffff;
+            --dropzone-bg: #fafafa;
+            --dropzone-border: #bdc3c7;
+            --dropzone-hover: #f0f8ff;
+            --dropzone-drag: #e1f0fa;
+            --primary-color: var(--logo-blue);
+            --primary-hover: #2980b9;
+        }
+
+        /* Tema Escuro - Profundo e Técnico */
+        [data-theme="dark"] {
+            --bg-body: #121212;
+            --bg-container: transparent;
+            --text-main: #f5f6fa;
+            --text-label: #dcdde1;
+            --text-muted: #a4b0be;
+            --border-color: #3d3d3d;
+            --input-bg: #2d2d2d;
+            --dropzone-bg: #252525;
+            --dropzone-border: #4b4b4b;
+            --dropzone-hover: #2f3640;
+            --dropzone-drag: var(--logo-deep);
+            --primary-color: #0097e6;
+            --primary-hover: #00a8ff;
+        }
+
+        /* Garante que margens e paddings não quebrem o tamanho da tela */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Microsoft YaHei', 'Meiryo', 'Malgun Gothic', 'Arial Unicode MS';
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Trava a altura exatamente na janela */
+            margin: 0;
+            padding: 0; 
+            overflow: hidden; /* Corta barras de rolagem nativas do body */
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        .container {
+            background-color: var(--bg-container);
+            padding: 15px 25px; /* AJUSTE: Reduzido de 20px para 15px no topo/fundo */
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Permite rolagem suave interna apenas se a janela for espremida manualmente */
+        }
+
+        /* Customização da barra de rolagem */
+        .container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .container::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: 10px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px; /* AJUSTE: Reduzido de 15px para 10px */
+            flex-shrink: 0;
+        }
+
+        /* --- Estilização do Logo Oficial --- */
+        .logo-container {
+            text-align: center;
+            margin-bottom: 5px; /* AJUSTE: Reduzido de 15px para 5px */
+            flex-shrink: 0;
+        }
+        .app-logo {
+            max-width: 110px; /* AJUSTE: Reduzido de 130px para 110px para ganhar espaço vertical */
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Toggle Switch */
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 56px;
+            height: 28px;
+        }
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 5px;
+            font-size: 14px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border-radius: 50%;
+            z-index: 2;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider {
+            background-color: var(--logo-deep);
+        }
+        input:checked + .slider:before {
+            transform: translateX(28px);
+        }
+        .slider .icon {
+            z-index: 1;
+        }
+
+        /* Seletor de Idioma */
+        .lang-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .lang-wrapper svg {
+            position: absolute;
+            left: 12px;
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            pointer-events: none; 
+            transition: stroke 0.3s ease;
+        }
+        
+        .lang-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 6px 32px 6px 36px;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s ease;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237f8c8d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            font-weight: 500;
+            font-family: inherit;
+        }
+        
+        .lang-select:hover, .lang-select:focus {
+            border-color: var(--primary-color);
+        }
+
+        [dir="rtl"] .lang-wrapper svg {
+            left: auto;
+            right: 12px;
+        }
+        [dir="rtl"] .lang-select {
+            padding-left: 16px;
+            padding-right: 36px;
+            background-position: left 12px center;
+        }
+
+        label {
+            font-weight: 600;
+            display: block;
+            margin-top: 8px; /* AJUSTE: Reduzido de 10px para 8px */
+            margin-bottom: 4px; /* AJUSTE: Reduzido de 5px para 4px */
+            font-size: 0.95rem;
+            color: var(--text-label);
+            transition: color 0.4s ease;
+        }
+        
+        .drop-zone {
+            border: 2px dashed var(--dropzone-border);
+            border-radius: 8px;
+            padding: 15px 10px; /* AJUSTE: Reduzido de 20px para 15px */
+            text-align: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            margin-bottom: 8px; /* AJUSTE: Reduzido de 10px para 8px */
+            transition: all 0.3s ease;
+            background-color: var(--dropzone-bg);
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        .drop-zone:hover {
+            background-color: var(--dropzone-hover);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        .drop-zone.dragover {
+            background-color: var(--dropzone-drag);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: scale(1.02);
+        }
+        
+        input[type="file"] {
+            display: none; 
+        }
+        
+        input[type="number"], select#fileEncoding {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 8px; /* AJUSTE: Reduzido de 10px para 8px */
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        input[type="number"]:focus, select#fileEncoding:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        button.btn-primary {
+            width: 100%;
+            padding: 12px; /* AJUSTE: Reduzido de 14px para 12px */
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            font-weight: bold;
+            margin-top: 5px; /* AJUSTE: Reduzido de 10px para 5px */
+            flex-shrink: 0;
+        }
+        button.btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+        button.btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .instrucoes {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: -5px;
+            margin-bottom: 6px;
+            display: block;
+            line-height: 1.4;
+            transition: color 0.4s ease;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: auto; 
+            padding-top: 10px; /* AJUSTE: Reduzido de 15px para 10px */
+            padding-bottom: 5px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            transition: color 0.4s ease;
+            border-top: 1px solid var(--border-color);
+        }
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+            color: var(--primary-hover);
+        }
+        .footer svg {
+            width: 14px;
+            height: 14px;
+            margin-right: 5px;
+            fill: currentColor;
+        }
+        [dir="rtl"] .footer svg {
+            margin-right: 0;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="top-bar">
+            <label class="theme-switch" title="Alternar Tema Claro/Escuro">
+                <input type="checkbox" id="themeToggle">
+                <div class="slider">
+                    <span class="icon" style="font-size: 12px; margin-left: 4px;">🌙</span>
+                    <span class="icon" style="font-size: 12px; margin-right: 4px;">☀️</span>
+                </div>
+            </label>
+
+            <div class="lang-wrapper">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+                <select class="lang-select" id="langSelect" onchange="mudarIdioma(this.value)">
+                    <option value="pt">Português</option>
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="it">Italiano</option>
+                    <option value="de">Deutsch</option>
+                    <option value="ru">Русский</option>
+                    <option value="tr">Türkçe</option>
+                    <option value="zh">中文</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                    <option value="ar">العربية</option>
+                    <option value="hi">हिन्दी</option>
+                    <option value="bn">বাংলা</option>
+                    <option value="ur">اردو</option>
+                    <option value="id">Bahasa</option>
+                    <option value="th">ไทย</option>
+                    <option value="vi">Tiếng Việt</option>
+                    <option value="te">తెలుగు</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="logo-container">
+            <img src="logo.png" alt="FlowSRT Logo" class="app-logo">
+        </div>
+
+        <label id="ui-step1">1. Envie o arquivo de legenda:</label>
+        <div class="drop-zone" id="dropZone">
+            <span id="ui-droptext">Arraste e solte o arquivo .srt aqui<br><br>ou clique para procurar</span>
+            <input type="file" id="fileInput" accept=".srt">
+        </div>
+
+        <label id="ui-encoding">Codificação do Arquivo (Se houver erro nos textos):</label>
+        <select id="fileEncoding">
+            <option value="utf-8" id="ui-enc-opt1">UTF-8 (Padrão Universal)</option>
+            <option value="windows-1252" id="ui-enc-opt2">ANSI / Ocidental (Legendas antigas PT/ES)</option>
+        </select>
+
+        <label id="ui-step2" for="timeShift">2. Ajuste em Milissegundos (ms):</label>
+        <span class="instrucoes" id="ui-instructions">Valores negativos adiantam a legenda. Positivos atrasam.<br>Ex: -5000 = adianta em 5 segundos.</span>
+        <input type="number" id="timeShift" placeholder="-5000" step="1">
+
+        <button class="btn-primary" id="ui-btn" onclick="processarArquivo()">Ajustar e Baixar</button>
+    </div>
+
+    <div class="footer">
+        <span id="ui-footer">Desenvolvido por</span> 
+        <a href="LINK_DO_SEU_GITHUB_AQUI" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+            </svg>
+            Anderson Cardoso Dias
+        </a>
+    </div>
+
+    <script>
+        const themeToggle = document.getElementById('themeToggle');
+        const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+        
+        if (prefersDarkScheme.matches) {
+            document.body.setAttribute('data-theme', 'dark');
+            themeToggle.checked = true;
+        }
+
+        themeToggle.addEventListener('change', function() {
+            if (this.checked) {
+                document.body.setAttribute('data-theme', 'dark');
+            } else {
+                document.body.removeAttribute('data-theme');
+            }
+        });
+
+        // Dicionário completo com os 19 idiomas e chaves perfeitamente alinhadas
+        const i18n = {
+            pt: {
+                step1: "1. Envie o arquivo de legenda:",
+                droptext: "Arraste e solte o arquivo .srt aqui<br><br>ou clique para procurar",
+                encoding: "Codificação do Arquivo (Se houver erro nos textos):",
+                encOpt1: "UTF-8 (Padrão Universal)",
+                encOpt2: "ANSI / Ocidental (Legendas antigas PT/ES)",
+                step2: "2. Ajuste em Milissegundos (ms):",
+                instructions: "Valores negativos adiantam a legenda. Positivos atrasam.<br>Ex: -5000 = adianta em 5 segundos.",
+                btn: "Ajustar e Baixar",
+                alertFile: "Por favor, arraste ou selecione um arquivo .srt.",
+                alertTime: "Por favor, insira o tempo de ajuste em milissegundos.",
+                alertExt: "Por favor, envie apenas arquivos com a extensão .srt",
+                ready: "Arquivo pronto:",
+                footer: "Desenvolvido por"
+            },
+            en: {
+                step1: "1. Upload subtitle file:",
+                droptext: "Drag and drop the .srt file here<br><br>or click to browse",
+                encoding: "File Encoding (If text is broken):",
+                encOpt1: "UTF-8 (Universal Standard)",
+                encOpt2: "ANSI / Western (Old PT/ES subs)",
+                step2: "2. Shift in Milliseconds (ms):",
+                instructions: "Negative values speed up the subtitle. Positive values delay it.<br>Ex: -5000 = 5 seconds earlier.",
+                btn: "Adjust and Download",
+                alertFile: "Please select or drop a .srt file.",
+                alertTime: "Please enter the adjustment time in milliseconds.",
+                alertExt: "Please upload only .srt files.",
+                ready: "File ready:",
+                footer: "Developed by"
+            },
+            es: {
+                step1: "1. Sube el archivo de subtítulos:",
+                droptext: "Arrastra y suelta el archivo .srt aquí<br><br>o haz clic para buscar",
+                encoding: "Codificación (Si el texto se ve mal):",
+                encOpt1: "UTF-8 (Estándar Universal)",
+                encOpt2: "ANSI / Occidental (Subs antiguos PT/ES)",
+                step2: "2. Ajuste en Milisegundos (ms):",
+                instructions: "Valores negativos adelantan el subtítulo. Positivos lo retrasan.<br>Ej: -5000 = adelanta 5 segundos.",
+                btn: "Ajustar y Descargar",
+                alertFile: "Por favor, selecciona un archivo .srt.",
+                alertTime: "Por favor, introduce el tempo en milisegundos.",
+                alertExt: "Por favor, sube solo archivos .srt.",
+                ready: "Archivo listo:",
+                footer: "Desarrollado por"
+            },
+            fr: {
+                step1: "1. Téléchargez le fichier de sous-titres:",
+                droptext: "Faites glisser le fichier .srt ici<br><br>ou cliquez pour parcourir",
+                encoding: "Encodage (Si le texte est cassé):",
+                encOpt1: "UTF-8 (Standard Universel)",
+                encOpt2: "ANSI / Occidental (Anciens soustitres PT/ES)",
+                step2: "2. Ajustement en Millisecondes (ms):",
+                instructions: "Les valeurs négatives avancent les sous-titres. Les positives les retardent.<br>Ex: -5000 = avance de 5 secondes.",
+                btn: "Ajuster et Télécharger",
+                alertFile: "Veuillez sélectionner un fichier .srt.",
+                alertTime: "Veuillez entrer le temps en millisecondes.",
+                alertExt: "Veuillez ne télécharger que des fichiers .srt.",
+                ready: "Fichier prêt:",
+                footer: "Développé par"
+            },
+            it: {
+                step1: "1. Carica il file dei sottotitoli:",
+                droptext: "Trascina e rilascia il file .srt qui<br><br>o fai clic per sfogliare",
+                encoding: "Codifica (Se il testo è illeggibile):",
+                encOpt1: "UTF-8 (Standard Universale)",
+                encOpt2: "ANSI / Occidentale (Vecchi sottotitoli PT/ES)",
+                step2: "2. Spostamento in Millisecondi (ms):",
+                instructions: "Valori negativi anticipano i sottotitoli. Valori positivi li ritardano.<br>Es: -5000 = anticipa di 5 secondi.",
+                btn: "Regola e Scarica",
+                alertFile: "Seleziona un file .srt.",
+                alertTime: "Inserisci il tempo in millisecondi.",
+                alertExt: "Carica solo file .srt.",
+                ready: "File pronto:",
+                footer: "Sviluppato da"
+            },
+            de: {
+                step1: "1. Untertiteldatei hochladen:",
+                droptext: "Ziehen Sie die .srt-Datei hierher<br><br>oder klicken Sie zum Durchsuchen",
+                encoding: "Codierung (Wenn der Text fehlerhaft ist):",
+                encOpt1: "UTF-8 (Universeller Standard)",
+                encOpt2: "ANSI / Westlich (Alte PT/ES-Untertitel)",
+                step2: "2. Verschiebung in Millisekunden (ms):",
+                instructions: "Negative Werte beschleunigen den Untertitel. Positive verzögern ihn.<br>Bsp: -5000 = 5 Sekunden früher.",
+                btn: "Anpassen und Herunterladen",
+                alertFile: "Bitte wählen Sie eine .srt-Datei aus.",
+                alertTime: "Bitte geben Sie die Zeit in Millisekunden ein.",
+                alertExt: "Bitte laden Sie nur .srt-Dateien hoch.",
+                ready: "Datei bereit:",
+                footer: "Entwickelt von"
+            },
+            ru: {
+                step1: "1. Загрузите файл субтитров:",
+                droptext: "Перетащите файл .srt сюда<br><br>или нажмите, чтобы выбрать",
+                encoding: "Кодировка (Если текст не читается):",
+                encOpt1: "UTF-8 (Универсальный стандарт)",
+                encOpt2: "ANSI / Западный (Старые субтитры PT/ES)",
+                step2: "2. Сдвиг в миллисекундах (мс):",
+                instructions: "Отрицательные значения ускоряют субтитры. Положительные задерживают.<br>Пример: -5000 = на 5 секунд раньше.",
+                btn: "Настроить и скачать",
+                alertFile: "Пожалуйста, выберите файл .srt.",
+                alertTime: "Пожалуйста, введите время в миллисекундах.",
+                alertExt: "Загружайте только файлы .srt.",
+                ready: "Файл готов:",
+                footer: "Разработано"
+            },
+            tr: {
+                step1: "1. Altyazı dosyasını yükleyin:",
+                droptext: ".srt dosyasını buraya sürükleyin<br><br>veya göz atmak için tıklayın",
+                encoding: "Kodlama (Metin bozuksa):",
+                encOpt1: "UTF-8 (Evrensel Standart)",
+                encOpt2: "ANSI / Batı (Eski altyazıları PT/ES)",
+                step2: "2. Milisaniye (ms) Cinsinden Kaydırma:",
+                instructions: "Negatif değerler altyazıyı hızlandırır. Pozitif değerler geciktirir.<br>Örn: -5000 = 5 saniye daha erken.",
+                btn: "Ayarla ve İndir",
+                alertFile: "Lütfen bir .srt dosyası seçin.",
+                alertTime: "Lütfen süreyi milisaniye cinsinden girin.",
+                alertExt: "Lütfen sadece .srt dosyaları yükleyin.",
+                ready: "Dosya hazır:",
+                footer: "Geliştiren"
+            },
+            zh: {
+                step1: "1. 上传字幕文件：",
+                droptext: "将 .srt 文件拖放到此处<br><br>或点击浏览",
+                encoding: "文件编码（如果显示乱码）：",
+                encOpt1: "UTF-8 (通用标准)",
+                encOpt2: "ANSI / 西方 (旧版 PT/ES 字幕)",
+                step2: "2. 毫秒 (ms) 调整：",
+                instructions: "负值使字幕提前。正值使字幕延迟。<br>例：-5000 = 提前5秒。",
+                btn: "调整并下载",
+                alertFile: "请选择一个 .srt 文件。",
+                alertTime: "请输入以毫秒为单位的时间。",
+                alertExt: "请仅上传 .srt 文件。",
+                ready: "文件已就绪：",
+                footer: "开发者"
+            },
+            ja: {
+                step1: "1. 字幕ファイルをアップロード：",
+                droptext: ".srtファイルをここにドラッグ<br><br>またはクリックして参照",
+                encoding: "エンコード（文字化けする場合）：",
+                encOpt1: "UTF-8 (ユニバーサル標準)",
+                encOpt2: "ANSI / 西洋 (古いPT/ES字幕)",
+                step2: "2. ミリ秒（ms）での調整：",
+                instructions: "負の値は字幕を早め、正の値は遅らせます。<br>例: -5000 = 5秒早める",
+                btn: "調整してダウンロード",
+                alertFile: ".srtファイルを選択してください。",
+                alertTime: "時間をミリ秒で入力してください。",
+                alertExt: ".srtファイルのみアップロードしてください。",
+                ready: "準備完了：",
+                footer: "開発者:"
+            },
+            ko: {
+                step1: "1. 자막 파일 업로드:",
+                droptext: "여기에 .srt 파일을 드래그 앤 드롭<br><br>또는 클릭하여 찾아보기",
+                encoding: "인코딩 (텍스트가 깨지는 경우):",
+                encOpt1: "UTF-8 (범용 표준)",
+                encOpt2: "ANSI / 서양 (이전 PT/ES 자막)",
+                step2: "2. 밀리초(ms) 단위 조정:",
+                instructions: "음수는 자막을 당기고 양수는 지연시킵니다.<br>예: -5000 = 5초 일찍.",
+                btn: "조정 및 다운로드",
+                alertFile: ".srt 파일을 선택해 주세요.",
+                alertTime: "조정할 시간을 밀리초 단위로 입력해 주세요.",
+                alertExt: ".srt 파일만 업로드해 주세요.",
+                ready: "파일 준비 완료:",
+                footer: "개발자:"
+            },
+            ar: {
+                step1: "1. قم بتحميل ملف الترجمة:",
+                droptext: "قم بسحب وإفلات ملف .srt هنا<br><br>أو انقر للتصفح",
+                encoding: "ترميز الملف (إذا كان النص معطلاً):",
+                encOpt1: "UTF-8 (المعيار العالمي)",
+                encOpt2: "ANSI / غربي (ترجمات قديمة)",
+                step2: "2. التعديل بالملي ثانية (ms):",
+                instructions: "القيم السالبة تسرع الترجمة. القيم الموجبة تؤخرها.<br>مثال: -5000 = 5 ثوانٍ أبكر.",
+                btn: "تعديل وتحميل",
+                alertFile: "يرجى تحديد أو إسقاط ملف .srt.",
+                alertTime: "يرجى إدخال وقت التعديل بالملي ثانية.",
+                alertExt: "يرجى تحميل ملفات .srt فقط.",
+                ready: "الملف جاهز:",
+                footer: "تم التطوير بواسطة"
+            },
+            hi: {
+                step1: "1. उपशीर्षक फ़ाइल अपलोड करें:",
+                droptext: "यहां .srt फ़ाइल खींचें और छोड़ें<br><br>या ब्राउज़ करने के लिए क्लिक करें",
+                encoding: "फ़ाइल एन्कोडिंग (यदि टेक्स्ट टूट गया है):",
+                encOpt1: "UTF-8 (यूनिवर्सल मानक)",
+                encOpt2: "ANSI / पश्चिमी (पुराने उपशीर्षक PT/ES)",
+                step2: "2. मिलीसेकंड (ms) में शिफ्ट:",
+                instructions: "नकारात्मक मान उपशीर्षक को गति देते हैं। सकारात्मक मान इसमें देरी करते हैं।<br>उदाहरण: -5000 = 5 सेकंड पहले।",
+                btn: "समायोजित करें और डाउनलोड करें",
+                alertFile: "कृपया एक .srt फ़ाइल चुनें या छोड़ें।",
+                alertTime: "कृपया मिलीसेकंड में समायोजन समय दर्ज करें।",
+                alertExt: "कृपया केवल .srt फ़ाइलें अपलोड करें।",
+                ready: "फ़ाइल तैयार:",
+                footer: "द्वारा विकसित"
+            },
+            bn: {
+                step1: "১. সাবটাইটেল ফাইল আপলোড করুন:",
+                droptext: "এখানে .srt ফাইলটি টেনে আনুন<br><br>অথবা ব্রাউজ করতে ক্লিক করুন",
+                encoding: "ফাইল এনকোডিং (যদি টেক্সট ভেঙে যায়):",
+                encOpt1: "UTF-8 (সার্বজনীন মান)",
+                encOpt2: "ANSI / ওয়েস্টার্ন (পুরানো সাবটাইটেল)",
+                step2: "২. মিলিসেকেন্ডে (ms) পরিবর্তন:",
+                instructions: "নেতিবাচক মান সাবটাইটেল দ্রুত করে। ইতিবাচক মান এটি বিলম্বিত করে।<br>উদাহরণ: -5000 = ৫ সেকেন্ড আগে।",
+                btn: "সামঞ্জস্য করুন এবং ডাউনলোড করুন",
+                alertFile: "অনুগ্রহ করে একটি .srt ফাইল নির্বাচন করুন।",
+                alertTime: "অনুগ্রহ করে মিলিসেকেন্ডে সময় লিখুন।",
+                alertExt: "অনুগ্রহ করে শুধুমাত্র .srt ফাইল আপলোড করুন।",
+                ready: "ফাইল প্রস্তুত:",
+                footer: "ডেভেলপ করেছেন"
+            },
+            ur: {
+                step1: "1. سب ٹائٹل فائل اپ لوڈ کریں:",
+                droptext: "یہاں .srt فائل ڈریگ اور ڈراپ کریں<br><br>یا براؤز کرنے کے لیے کلک کریں",
+                encoding: "فائل انکوڈنگ (اگر متن ٹوٹا ہوا ہے):",
+                encOpt1: "UTF-8 (عالمی معیار)",
+                encOpt2: "ANSI / مغربی (پرانے سب ٹائٹل)",
+                step2: "2. ملی سیکنڈ (ms) میں تبدیلی:",
+                instructions: "منفی اقدار سب ٹائٹل کو تیز کرتی ہیں۔ مثبت اقدار اسے تاخیر کرتی ہیں۔<br>مثال: -5000 = 5 سیکنڈ پہلے۔",
+                btn: "ایڈجسٹ اور ڈاؤن لوڈ کریں",
+                alertFile: "براہ کرم .srt فائل منتخب کریں۔",
+                alertTime: "براہ کرم ملی سیکنڈ میں وقت درج کریں۔",
+                alertExt: "براہ کرم صرف .srt فائلیں اپ لوڈ کریں۔",
+                ready: "فائل تیار:",
+                footer: "تیار کردہ"
+            },
+            id: {
+                step1: "1. Unggah file subtitle:",
+                droptext: "Seret dan lepas file .srt di sini<br><br>atau klik untuk menelusuri",
+                encoding: "Pengkodean File (Jika teks rusak):",
+                encOpt1: "UTF-8 (Standar Universal)",
+                encOpt2: "ANSI / Barat (Subtitle lama)",
+                step2: "2. Geser dalam Milidetik (ms):",
+                instructions: "Nilai negatif mempercepat subtitle. Nilai positif menundanya.<br>Contoh: -5000 = 5 detik lebih awal.",
+                btn: "Sesuaikan dan Unduh",
+                alertFile: "Silakan pilih atau jatuhkan file .srt.",
+                alertTime: "Silakan masukkan waktu penyesuaian dalam milidetik.",
+                alertExt: "Hanya unggah file .srt.",
+                ready: "File siap:",
+                footer: "Dikembangkan oleh"
+            },
+            th: {
+                step1: "1. อัปโหลดไฟล์คำบรรยาย:",
+                droptext: "ลากและวางไฟล์ .srt ที่นี่<br><br>หรือคลิกเพื่อเรียกดู",
+                encoding: "การเข้ารหัสไฟล์ (หากข้อความเสีย):",
+                encOpt1: "UTF-8 (มาตรฐานสากล)",
+                encOpt2: "ANSI / ตะวันตก (ซับไตเติ้ลเก่า)",
+                step2: "2. ปรับเป็นมิลลิวินาที (ms):",
+                instructions: "ค่าลบทำให้คำบรรยายเร็วขึ้น ค่าบวกทำให้ช้าลง<br>ตัวอย่าง: -5000 = เร็วขึ้น 5 วินาที",
+                btn: "ปรับและดาวน์โหลด",
+                alertFile: "โปรดเลือกไฟล์ .srt",
+                alertTime: "โปรดระบุเวลาในการปรับเป็นมิลลิวินาที",
+                alertExt: "โปรดอัปโหลดเฉพาะไฟล์ .srt เท่านั้น",
+                ready: "ไฟล์พร้อมใช้งาน:",
+                footer: "พัฒนาโดย"
+            },
+            vi: {
+                step1: "1. Tải lên tệp phụ đề:",
+                droptext: "Kéo và thả tệp .srt vào đây<br><br>hoặc nhấp để duyệt",
+                encoding: "Mã hóa tệp (Nếu văn bản bị lỗi):",
+                encOpt1: "UTF-8 (Tiêu chuẩn quốc tế)",
+                encOpt2: "ANSI / Phương Tây (Phụ đề cũ)",
+                step2: "2. Điều chỉnh bằng mili giây (ms):",
+                instructions: "Giá trị âm làm phụ đề chạy nhanh. Giá trị dương làm chậm lại.<br>VD: -5000 = sớm hơn 5 giây.",
+                btn: "Điều chỉnh và Tải xuống",
+                alertFile: "Vui lòng chọn hoặc thả tệp .srt.",
+                alertTime: "Vui lòng nhập thời gian điều chỉnh bằng mili giây.",
+                alertExt: "Vui lòng chỉ tải lên các tệp .srt.",
+                ready: "Tệp đã sẵn sàng:",
+                footer: "Được phát triển bởi"
+            },
+            te: {
+                step1: "1. సబ్‌టైటిల్ ఫైల్‌ను అప్‌లోడ్ చేయండి:",
+                droptext: ".srt ఫైల్‌ను ఇక్కడ లాగి వదలండి<br><br>లేదా బ్రౌజ్ చేయడానికి క్లిక్ చేయండి",
+                encoding: "ఫైల్ ఎన్‌కోడింగ్ (టెక్స్ట్ విచ్ఛిన్నమైతే):",
+                encOpt1: "UTF-8 (యూనివర్సల్ స్టాండర్డ్)",
+                encOpt2: "ANSI / వెస్ట్రన్ (పాత సబ్‌టైటిల్స్)",
+                step2: "2. మిల్లీసెకన్లలో మార్పు (ms):",
+                instructions: "ప్రతికూల విలువలు సబ్‌టైటిల్‌ను వేగవంతం చేస్తాయి. సానుకూల విలువలు ఆలస్యం చేస్తాయి.<br>ఉదా: -5000 = 5 సెకన్ల ముందు.",
+                btn: "సర్దుబాటు చేయండి మరియు డౌన్‌లోడ్ చేయండి",
+                alertFile: "దయచేసి .srt ఫైల్‌ను ఎంచుకోండి.",
+                alertTime: "దయచేసి సర్దుబాటు సమయాన్ని మిల్లీసెకన్లలో నమోదు చేయండి.",
+                alertExt: "దయచేసి .srt ఫైల్‌లను మాత్రమే అప్‌లోడ్ చేయండి.",
+                ready: "ఫైల్ సిద్ధంగా ఉంది:",
+                footer: "అభివృద్ధి చేసినవారు"
+            }
+        };
+
+        let currentLang = 'pt';
+
+        function mudarIdioma(lang) {
+            currentLang = lang;
+            const t = i18n[lang];
+
+            if (['ar', 'ur'].includes(lang)) {
+                document.body.setAttribute('dir', 'rtl');
+            } else {
+                document.body.setAttribute('dir', 'ltr');
+            }
+            
+            document.getElementById('ui-step1').innerHTML = t.step1;
+
+            if (!arquivoSelecionado) {
+                document.getElementById('ui-droptext').innerHTML = t.droptext;
+            } else {
+                document.getElementById('dropZone').innerHTML = `<strong>${t.ready}</strong><br><br>${arquivoSelecionado.name}`;
+            }
+
+            document.getElementById('ui-encoding').innerHTML = t.encoding;
+            document.getElementById('ui-enc-opt1').innerHTML = t.encOpt1; 
+            document.getElementById('ui-enc-opt2').innerHTML = t.encOpt2; 
+            document.getElementById('ui-step2').innerHTML = t.step2;
+            document.getElementById('ui-instructions').innerHTML = t.instructions;
+            document.getElementById('ui-btn').innerHTML = t.btn;
+            document.getElementById('ui-footer').innerHTML = t.footer; 
+        }
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        let arquivoSelecionado = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                lidarComArquivo(e.target.files[0]);
+            }
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                lidarComArquivo(e.dataTransfer.files[0]);
+            }
+        });
+
+        function lidarComArquivo(file) {
+            if (!file.name.endsWith('.srt')) {
+                alert(i18n[currentLang].alertExt);
+                return;
+            }
+            arquivoSelecionado = file;
+            dropZone.innerHTML = `<strong>${i18n[currentLang].ready}</strong><br><br>${file.name}`;
+        }
+
+        function processarArquivo() {
+            const timeShiftInput = document.getElementById('timeShift').value;
+            const encodingSelecionado = document.getElementById('fileEncoding').value;
+
+            if (!arquivoSelecionado) {
+                alert(i18n[currentLang].alertFile);
+                return;
+            }
+            if (timeShiftInput === '') {
+                alert(i18n[currentLang].alertTime);
+                return;
+            }
+
+            const shiftMs = parseInt(timeShiftInput, 10);
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const conteudoOriginal = e.target.result;
+                const conteudoAjustado = ajustarTempoSubtitles(conteudoOriginal, shiftMs);
+                const novoNome = arquivoSelecionado.name.replace('.srt', '_ajustado.srt');
+                baixarArquivo(conteudoAjustado, novoNome);
+            };
+
+            reader.readAsText(arquivoSelecionado, encodingSelecionado);
+        }
+
+        function ajustarTempoSubtitles(dados, shiftMs) {
+            const regexTempo = /(\d{2}):(\d{2}):(\d{2}),(\d{3})/g;
+            
+            return dados.replace(regexTempo, (match, h, m, s, ms) => {
+                let totalMs = 
+                    parseInt(h, 10) * 3600000 + 
+                    parseInt(m, 10) * 60000 + 
+                    parseInt(s, 10) * 1000 + 
+                    parseInt(ms, 10);
+                
+                totalMs += shiftMs; 
+                if (totalMs < 0) totalMs = 0;
+                
+                const novoH = String(Math.floor(totalMs / 3600000)).padStart(2, '0');
+                totalMs %= 3600000;
+                const novoM = String(Math.floor(totalMs / 60000)).padStart(2, '0');
+                totalMs %= 60000;
+                const novoS = String(Math.floor(totalMs / 1000)).padStart(2, '0');
+                const novoMs = String(Math.round(totalMs % 1000)).padStart(3, '0');
+                
+                return `${novoH}:${novoM}:${novoS},${novoMs}`;
+            });
+        }
+
+        function baixarArquivo(conteudo, nomeArquivo) {
+            const blob = new Blob(["\uFEFF" + conteudo], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
