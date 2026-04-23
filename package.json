@@ -1,6 +1,6 @@
 {
   "name": "flow-srt",
-  "version": "1.0.0",
+  "version": "0.0.4",
   "description": "A modern and elegant tool for syncing .srt subtitles.",
   "main": "main.js",
   "author": "Alazter",
@@ -10,7 +10,7 @@
     "build:portable": "electron-builder"
   },
   "build": {
-    "appId": "com.anderson.flowsrt",
+    "appId": "com.alazter.flowsrt",
     "productName": "FlowSRT",
     "win": {
       "target": "portable",
@@ -28,7 +28,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "SEU_USUARIO_GITHUB",
+        "owner": "alazter",
         "repo": "flow-srt"
       }
     ]
