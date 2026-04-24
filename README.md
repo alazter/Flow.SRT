@@ -1,4 +1,4 @@
-# 🎬 Flow.SRT - Professional Subtitle Synchronizer
+# 🎬 Flow.SRT - Subtitle Time Shift
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/alazter/flow-srt?style=for-the-badge&color=3498db)
 ![Platform Support](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-brightgreen?style=for-the-badge)
