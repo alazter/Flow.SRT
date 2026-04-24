@@ -3,7 +3,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/alazter/flow-srt?style=for-the-badge&color=3498db)
 ![Platform Support](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-brightgreen?style=for-the-badge)
 
-**FlowSRT** is a minimalist and powerful tool designed for synchronizing subtitle files (.srt) with surgical precision. Built with a focus on performance and high-fidelity design, it offers a seamless experience for quick timing adjustments.
+**FlowSRT** is a minimalist and simple tool designed for synchronizing subtitle files (.srt) with surgical precision. Built with a focus on performance and high-fidelity design, it offers a seamless experience for quick timing adjustments.
 
 <p align="center">
   <img src="./preview.png" width="450" alt="FlowSRT Preview">
